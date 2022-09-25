@@ -8,12 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="application.yml" />
     <None Remove="appsettings.json" />
+    <None Remove="Lavalink.jar" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="application.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Lavalink.jar">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 

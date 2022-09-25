@@ -4,6 +4,8 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RednakoSharp.Helpers;
+using System.Diagnostics;
+using System.Reflection;
 using Victoria;
 using Victoria.EventArgs;
 
@@ -11,10 +13,16 @@ using Victoria.EventArgs;
 
 namespace RednakoSharp
 {
-    public class Program
+    public class Program : IDisposable
     {
         private readonly IConfiguration _configuration;
+        private readonly IConfiguration _localservices;
+        private readonly IConfiguration _lavacfg;
         private readonly IServiceProvider _services;
+
+        private readonly Process? lavaprocess;
+
+        private readonly string path;
 
         private readonly DiscordSocketConfig _socketConfig = new()
         {
@@ -22,12 +30,36 @@ namespace RednakoSharp
             AlwaysDownloadUsers = true,
         };
 
+        public void Dispose()
+        {
+            if (lavaprocess != null)
+            {
+                lavaprocess.Close();
+            }
+            Dispose();
+            GC.SuppressFinalize(this);
+        }
+
         public Program()
         {
-            ConfigurationBuilder cfg = new();
-            cfg.AddEnvironmentVariables(prefix: "discord");
-            cfg.AddJsonFile("appsettings.json");
-            _configuration = cfg.Build();
+            path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+
+            /// Local Service Configuration
+            _localservices = new ConfigurationBuilder()
+                .AddEnvironmentVariables(prefix: "services")
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+            /// Modules Configuration
+            _configuration = new ConfigurationBuilder()
+                .AddEnvironmentVariables(prefix: "discord")
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+            _lavacfg = new ConfigurationBuilder()
+                .AddEnvironmentVariables(prefix: "discord")
+                .AddJsonFile("appsettings.json")
+                .Build();
 
             ServiceCollection srv = new();
             srv.AddSingleton(_configuration);
@@ -38,9 +70,20 @@ namespace RednakoSharp
             srv.AddSingleton<LavaNode>();
             srv.AddSingleton<LavaConfig>();
 
+            if(_localservices.GetValue<bool>("services:useLocalLavalink"))
+            {
+                lavaprocess = Process.Start("java", "-jar " + path + "/lavalink.jar");
+                Console.WriteLine("Starting local version of lavalink");
+                Thread.Sleep(4000); // Wait for startup
+            }
+
             srv.AddLavaNode(x =>
             {
                 x.SelfDeaf = true;
+                x.Hostname = _lavacfg.GetValue<string>("lavalink:address");
+                x.Port = _lavacfg.GetValue<ushort>("lavalink:port");
+                x.Authorization = _lavacfg.GetValue<string>("lavalink:password");
+                x.LogSeverity = LogSeverity.Error;
             });
 
             _services = srv.BuildServiceProvider();
