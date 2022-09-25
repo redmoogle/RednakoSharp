@@ -15,13 +15,31 @@ namespace RednakoSharp
 {
     public class Program : IDisposable
     {
+        /// <summary>
+        /// Discord Configuration
+        /// </summary>
         private readonly IConfiguration _configuration;
+        /// <summary>
+        /// Enabled Services Configuration
+        /// </summary>
         private readonly IConfiguration _localservices;
+        /// <summary>
+        /// Lavalink Configuration
+        /// </summary>
         private readonly IConfiguration _lavacfg;
+        /// <summary>
+        /// Services modules can pull from
+        /// </summary>
         private readonly IServiceProvider _services;
 
+        /// <summary>
+        /// Represents running lavalink process
+        /// </summary>
         private readonly Process? lavaprocess;
 
+        /// <summary>
+        /// Path to executing file
+        /// </summary>
         private readonly string path;
 
         private readonly DiscordSocketConfig _socketConfig = new()
@@ -61,38 +79,43 @@ namespace RednakoSharp
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            ServiceCollection srv = new();
-            srv.AddSingleton(_configuration);
-            srv.AddSingleton(_socketConfig);
-            srv.AddSingleton<DiscordSocketClient>();
-            srv.AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()));
-            srv.AddSingleton<InteractionHandler>();
-            srv.AddSingleton<LavaNode>();
-            srv.AddSingleton<LavaConfig>();
-
-            if(_localservices.GetValue<bool>("services:useLocalLavalink"))
+            if (_localservices.GetValue<bool>("services:useLocalLavalink"))
             {
-                lavaprocess = Process.Start("java", "-jar " + path + "/lavalink.jar");
+                lavaprocess = new Process();
+                lavaprocess.StartInfo.FileName = "java";
+                lavaprocess.StartInfo.Arguments = "-jar " + path + "/lavalink.jar";
+                lavaprocess.StartInfo.RedirectStandardOutput = true;
+                lavaprocess.Start();
                 Console.WriteLine("Starting local version of lavalink");
                 Thread.Sleep(4000); // Wait for startup
             }
 
-            srv.AddLavaNode(x =>
-            {
-                x.SelfDeaf = true;
-                x.Hostname = _lavacfg.GetValue<string>("lavalink:address");
-                x.Port = _lavacfg.GetValue<ushort>("lavalink:port");
-                x.Authorization = _lavacfg.GetValue<string>("lavalink:password");
-                x.LogSeverity = LogSeverity.Error;
-            });
+            _services = new ServiceCollection()
+                .AddSingleton(_configuration)
+                .AddSingleton(_socketConfig)
+                .AddSingleton<DiscordSocketClient>()
+                .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
+                .AddSingleton<InteractionHandler>()
+                .AddSingleton<LavaNode>()
+                .AddSingleton<LavaConfig>()
+                .AddLavaNode(x =>
+                {
+                    x.SelfDeaf = true;
+                    x.Hostname = _lavacfg.GetValue<string>("lavalink:address");
+                    x.Port = _lavacfg.GetValue<ushort>("lavalink:port");
+                    x.Authorization = _lavacfg.GetValue<string>("lavalink:password");
+                    x.LogSeverity = LogSeverity.Error;
+                })
+                .BuildServiceProvider();
 
-            _services = srv.BuildServiceProvider();
         }
 
         static void Main()
-            => new Program().RunAsync()
+        {
+            new Program().RunAsync()
                 .GetAwaiter()
                 .GetResult();
+        }
 
         public async Task RunAsync()
         {
