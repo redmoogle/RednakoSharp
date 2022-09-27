@@ -7,14 +7,15 @@ namespace RednakoSharp.Helpers
     {
         public async static Task<Embed> TrackEmbed(LavaTrack track)
         {
-            EmbedBuilder eb = new();
-            eb.Description = "```css\n" + track.Title + "\n```";
-            eb.Title = "Now Playing: ";
-            eb.ThumbnailUrl = await track.FetchArtworkAsync();
+            EmbedBuilder eb = new()
+            {
+                Description = "```css\n" + track.Title + "\n```",
+                Title = "Now Playing: ",
+                ThumbnailUrl = await track.FetchArtworkAsync()
+            };
 
             eb.AddField("Song: ", "[" + track.Title + "](" + track.Url + ")");
             TimeSpan duration = track.Duration;
-            TimeSpan position = track.Position;
 
             string durationFormatted = "";
             string positionFormatted = "";

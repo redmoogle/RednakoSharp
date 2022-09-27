@@ -13,7 +13,7 @@ using Victoria.EventArgs;
 
 namespace RednakoSharp
 {
-    public class Program : IDisposable
+    internal sealed class Program
     {
         /// <summary>
         /// Discord Configuration
@@ -45,18 +45,9 @@ namespace RednakoSharp
         private readonly DiscordSocketConfig _socketConfig = new()
         {
             GatewayIntents = GatewayIntents.AllUnprivileged,
+            LogGatewayIntentWarnings = false,
             AlwaysDownloadUsers = true,
         };
-
-        public void Dispose()
-        {
-            if (lavaprocess != null)
-            {
-                lavaprocess.Close();
-            }
-            Dispose();
-            GC.SuppressFinalize(this);
-        }
 
         public Program()
         {

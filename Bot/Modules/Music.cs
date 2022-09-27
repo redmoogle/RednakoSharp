@@ -22,9 +22,9 @@ namespace RednakoSharp.Modules
         [SlashCommand("play", "Play some music")]
         public async Task PlayTask([Summary(description: "URL or search term")] string search)
         {
-            var voiceState = Context.User as IVoiceState;
+            IVoiceState? voiceState = Context.User as IVoiceState;
             IVoiceChannel? uservc = voiceState?.VoiceChannel;
-            IVoiceChannel? playervc;
+            IVoiceChannel? playervc = null;
 
             _lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer tryplayer);
             {
@@ -37,7 +37,7 @@ namespace RednakoSharp.Modules
                 return;
             }
 
-            if (voiceState?.VoiceChannel == null)
+            if (uservc == null)
             {
                 await RespondAsync("You are not connected to a voice channel", ephemeral: true);
                 return;
@@ -45,7 +45,7 @@ namespace RednakoSharp.Modules
 
             try
             {
-                await _lavaNode.JoinAsync(voiceState.VoiceChannel, Context.Channel as ITextChannel);
+                await _lavaNode.JoinAsync(uservc, Context.Channel as ITextChannel);
             }
             catch (Exception exception)
             {
