@@ -28,14 +28,6 @@ namespace RednakoSharp.Modules
         public async Task BotInfoAsync()
         {
             DiscordSocketClient client = Context.Client;
-            EmbedBuilder embed = new()
-            {
-                Title = "Bot Information",
-                ThumbnailUrl = client.CurrentUser.GetAvatarUrl() ?? client.CurrentUser.GetDefaultAvatarUrl()
-            };
-
-            embed.AddField("Owner", client.GetUser(_handler.GetValueAsUlong("owner")).ToString());
-            embed.AddField("Servers", client.Guilds.Count);
 
             long Count = 0;
             foreach (SocketGuild guild in client.Guilds)
@@ -43,7 +35,13 @@ namespace RednakoSharp.Modules
                 Count += guild.MemberCount;
             }
 
-            embed.AddField("Members", Count);
+            EmbedBuilder embed = new EmbedBuilder()
+                .WithTitle("Bot Information")
+                .WithThumbnailUrl(client.CurrentUser.GetAvatarUrl() ?? client.CurrentUser.GetDefaultAvatarUrl())
+                .AddField("Owner", client.GetUser(_handler.GetValueAsUlong("owner")).ToString())
+                .AddField("Servers", client.Guilds.Count)
+                .AddField("Members", Count);
+
             await RespondAsync(embed: embed.Build());
         }
 
@@ -51,33 +49,26 @@ namespace RednakoSharp.Modules
         public async Task ServerInfoAsync()
         {
             SocketGuild guild = Context.Guild;
-            EmbedBuilder embed = new()
-            {
-                Title = "Server Information",
-                ThumbnailUrl = guild.BannerUrl
-            };
-            embed.AddField("Owner", guild.Owner, true);
-            embed.AddField("ID", guild.Id, true);
-            embed.AddField("Categories", guild.CategoryChannels.Count, true);
-            embed.AddField("Channels", guild.Channels.Count, true);
-            embed.AddField("Roles", guild.Roles.Count, true);
-            embed.AddField("Members", guild.MemberCount, true);
+            EmbedBuilder embed = new EmbedBuilder()
+                .WithTitle("Server Information")
+                .WithThumbnailUrl(guild.BannerUrl)
+                .AddField("Owner", guild.Owner, true)
+                .AddField("ID", guild.Id, true)
+                .AddField("Categories", guild.CategoryChannels.Count, true)
+                .AddField("Channels", guild.Channels.Count, true)
+                .AddField("Roles", guild.Roles.Count, true)
+                .AddField("Members", guild.MemberCount, true);
+
             await RespondAsync(embed: embed.Build());
         }
 
         [SlashCommand("avatar", "Get a avatar")]
         public async Task AvatarTask([Summary(description: "Get avatar of a specific user")] SocketUser? user = null)
         {
-            if (user == null)
-            {
-                string avatar = Context.User.GetAvatarUrl() ?? Context.User.GetDefaultAvatarUrl();
-                await RespondAsync(embed: new EmbedBuilder() { Title = Context.User.Username, ImageUrl = avatar }.Build());
-            }
-            else
-            {
-                string avatar = user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl();
-                await RespondAsync(embed: new EmbedBuilder() { Title = user.Username, ImageUrl = avatar }.Build());
-            }
+            user ??= Context.User;
+
+            string avatar = user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl();
+            await RespondAsync(embed: new EmbedBuilder() { Title = user.Username, ImageUrl = avatar }.Build());
         }
 
         [SlashCommand("animalfacts", "Get some facts about animals")]

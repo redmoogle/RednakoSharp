@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RednakoSharp.Helpers;
+using System;
 using System.Diagnostics;
 using System.Reflection;
 using Victoria;
@@ -51,20 +52,23 @@ namespace RednakoSharp
 
         public Program()
         {
+            /// As far as my C# understanding goes GetDirectoryName can return null but this code *should* never
+            /// return null or something has gone terribly wrong.
             path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
 
-            /// Local Service Configuration
+            /// Local Services Configuration
             _localservices = new ConfigurationBuilder()
                 .AddEnvironmentVariables(prefix: "services")
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            /// Modules Configuration
+            /// Discord.Net Configuration
             _configuration = new ConfigurationBuilder()
                 .AddEnvironmentVariables(prefix: "discord")
                 .AddJsonFile("appsettings.json")
                 .Build();
 
+            /// Lavalink/Victoria Configuration
             _lavacfg = new ConfigurationBuilder()
                 .AddEnvironmentVariables(prefix: "discord")
                 .AddJsonFile("appsettings.json")
@@ -76,8 +80,10 @@ namespace RednakoSharp
                 lavaprocess.StartInfo.FileName = "java";
                 lavaprocess.StartInfo.Arguments = "-jar " + path + "/lavalink.jar";
                 lavaprocess.StartInfo.RedirectStandardOutput = true;
+                lavaprocess.StartInfo.UseShellExecute = false;
                 lavaprocess.Start();
                 Console.WriteLine("Starting local version of lavalink");
+                /// TODO: refactor this to wait for "Lavalink is ready to accept connections."
                 Thread.Sleep(4000); // Wait for startup
             }
 
@@ -138,6 +144,7 @@ namespace RednakoSharp
                 node.OnTrackStarted += TrackStart;
             }
         }
+
         public static async Task TrackStart(TrackStartEventArgs trackargs) // I cant just put this directly into the music module due to the constructor being ran twice(wtf??)
         {
             LavaTrack track = trackargs.Track;
