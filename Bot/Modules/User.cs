@@ -11,6 +11,9 @@ namespace RednakoSharp.Modules
         public InteractionService? Commands { get; set; }
         private readonly InteractionHandler _handler;
 
+        private readonly Random random = new();
+        private readonly string[] animals = { "cat", "dog", "koala", "fox", "bird", "red_panda", "panda", "racoon", "kangaroo" };
+
         // Constructor injection is also a valid way to access the dependencies
         public User(InteractionHandler handler)
         {
@@ -29,18 +32,12 @@ namespace RednakoSharp.Modules
         {
             DiscordSocketClient client = Context.Client;
 
-            long Count = 0;
-            foreach (SocketGuild guild in client.Guilds)
-            {
-                Count += guild.MemberCount;
-            }
-
             EmbedBuilder embed = new EmbedBuilder()
                 .WithTitle("Bot Information")
                 .WithThumbnailUrl(client.CurrentUser.GetAvatarUrl() ?? client.CurrentUser.GetDefaultAvatarUrl())
                 .AddField("Owner", client.GetUser(_handler.GetValueAsUlong("owner")).ToString())
                 .AddField("Servers", client.Guilds.Count)
-                .AddField("Members", Count);
+                .AddField("Members", client.Guilds.Sum(guild => guild.MemberCount));
 
             await RespondAsync(embed: embed.Build());
         }
@@ -82,11 +79,9 @@ namespace RednakoSharp.Modules
         {
             string animal = selectedAnimal[0];
 
-            if (animal == "random" || animal == null)
+            if (animal == "random")
             {
-                string[] options = new string[] { "cat", "dog", "koala", "fox", "bird", "red_panda", "panda", "racoon", "kangaroo" };
-                Random random = new();
-                animal = options[random.Next(0, options.Length)];
+                animal = animals[random.Next(0, animals.Length)];
             }
 
             await DeferAsync();
@@ -113,11 +108,9 @@ namespace RednakoSharp.Modules
         {
             string animal = selectedAnimal[0];
 
-            if (animal == "random" || animal == null)
+            if (animal == "random")
             {
-                string[] options = new string[] { "cat", "dog", "koala", "fox", "bird", "red_panda", "panda", "racoon", "kangaroo" };
-                Random random = new();
-                animal = options[random.Next(0, options.Length)];
+                animal = animals[random.Next(0, animals.Length)];
             }
 
             await DeferAsync();
