@@ -24,32 +24,24 @@ namespace RednakoSharp.Modules
         {
             IVoiceState? voiceState = Context.User as IVoiceState;
             IVoiceChannel? uservc = voiceState?.VoiceChannel;
-            IVoiceChannel? playervc = null;
 
-            _lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer tryplayer);
-            {
-                playervc = tryplayer?.VoiceChannel;
-            }
-            Console.WriteLine(uservc?.ToString() + playervc?.ToString());
-            if (_lavaNode.HasPlayer(Context.Guild) && !(playervc == null) && (playervc != uservc))
-            {
-                await RespondAsync("I'm already connected to a voice channel", ephemeral: true);
-                return;
-            }
-
-            if (uservc == null)
+            if (voiceState == null || uservc == null)
             {
                 await RespondAsync("You are not connected to a voice channel", ephemeral: true);
                 return;
             }
 
-            try
+            if (!_lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer tryplayer))
             {
                 await _lavaNode.JoinAsync(uservc, Context.Channel as ITextChannel);
             }
-            catch (Exception exception)
+
+            LavaPlayer player = tryplayer ?? _lavaNode.GetPlayer(Context.Guild);
+            IVoiceChannel playervc = player.VoiceChannel;
+
+            if (playervc != null && playervc != uservc)
             {
-                await RespondAsync(exception.Message, ephemeral: true);
+                await RespondAsync("I'm already connected to another voice channel.", ephemeral: true);
                 return;
             }
 
@@ -62,15 +54,14 @@ namespace RednakoSharp.Modules
                 return;
             }
 
-            var player = _lavaNode.GetPlayer(Context.Guild);
-            if (!string.IsNullOrWhiteSpace(searchResponse.Playlist.Name))
+            if (searchResponse.Status == SearchStatus.PlaylistLoaded)
             {
                 player.Queue.Enqueue(searchResponse.Tracks);
                 await RespondAsync($"Enqueued {searchResponse.Tracks.Count} songs.");
             }
             else
             {
-                var track = searchResponse.Tracks.FirstOrDefault();
+                LavaTrack track = searchResponse.Tracks.First();
                 player.Queue.Enqueue(track);
                 await RespondAsync($"Enqueued {track?.Title}");
             }
@@ -98,24 +89,11 @@ namespace RednakoSharp.Modules
                 await RespondAsync("I'm not connected to a voice channel.", ephemeral: true);
                 return;
             }
+            IVoiceChannel voiceChannel = player.VoiceChannel;
 
-            if (player.PlayerState == PlayerState.Stopped)
-            {
-                await RespondAsync("Already stopped.", ephemeral: true);
-                return;
-            }
-
-            try
-            {
-                await player.StopAsync();
-                var voiceChannel = player.VoiceChannel;
-                await _lavaNode.LeaveAsync(voiceChannel);
-                await RespondAsync("Stopped the player.");
-            }
-            catch (Exception exception)
-            {
-                await RespondAsync(exception.Message, ephemeral: true);
-            }
+            await player.StopAsync();
+            await _lavaNode.LeaveAsync(voiceChannel);
+            await RespondAsync("Stopped the player.");
         }
 
         [EnabledInDm(false)]
