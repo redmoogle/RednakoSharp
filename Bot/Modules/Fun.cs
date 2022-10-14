@@ -34,5 +34,32 @@ namespace RednakoSharp.Modules
                 Thread.Sleep(100);
             }
         }
+
+        [SlashCommand("meme", "Pulls up a bad meme.")]
+        public async Task BadMeme()
+        {
+            JObject obj = await Http.HttpAPIRequest("https://some-random-api.ml/meme");
+
+            Embed embed = new EmbedBuilder()
+                .WithDescription((string?)obj["caption"])
+                .WithImageUrl((string?)obj["image"])
+                .WithFooter(new EmbedFooterBuilder().WithText("Category: " + (string?)obj["category"]))
+                .Build();
+
+            await RespondAsync(embed: embed);
+
+        }
+
+        [SlashCommand("joke", "Parrots a bad joke.")]
+        public async Task BadJoke()
+        {
+            JObject obj = await Http.HttpAPIRequest("https://some-random-api.ml/joke");
+
+            Embed embed = new EmbedBuilder()
+                .WithDescription((string?)obj["joke"])
+                .Build();
+
+            await RespondAsync(embed: embed);
+        }
     }
 }
