@@ -82,9 +82,23 @@ namespace RednakoSharp
                 lavaprocess.StartInfo.RedirectStandardOutput = true;
                 lavaprocess.StartInfo.UseShellExecute = false;
                 lavaprocess.Start();
+
+                AppDomain.CurrentDomain.ProcessExit += new EventHandler(LavalinkClose);
+
                 Console.WriteLine("Starting local version of lavalink");
                 /// TODO: refactor this to wait for "Lavalink is ready to accept connections."
-                Thread.Sleep(4000); // Wait for startup
+                StreamReader stdout = lavaprocess.StandardOutput;
+                while (true)
+                {
+                    string? line = stdout.ReadLine();
+
+                    if (line == null) continue;
+
+                    if(line.Contains("Undertow started on port")) {
+                        break;
+                    }
+                    Thread.Sleep(100);
+                }
             }
 
             _services = new ServiceCollection()
@@ -112,6 +126,11 @@ namespace RednakoSharp
             new Program().RunAsync()
                 .GetAwaiter()
                 .GetResult();
+        }
+
+        public void LavalinkClose(object? sender, EventArgs e)
+        {
+            lavaprocess?.Close();
         }
 
         public async Task RunAsync()
@@ -153,6 +172,6 @@ namespace RednakoSharp
         }
 
         private async Task LogAsync(LogMessage message)
-            => Console.WriteLine(message.ToString());
+            => Console.WriteLine(message);
     }
 }
