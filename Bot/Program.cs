@@ -86,7 +86,6 @@ namespace RednakoSharp
                 AppDomain.CurrentDomain.ProcessExit += new EventHandler(LavalinkClose);
 
                 Console.WriteLine("Starting local version of lavalink");
-                /// TODO: refactor this to wait for "Lavalink is ready to accept connections."
                 StreamReader stdout = lavaprocess.StandardOutput;
                 while (true)
                 {
@@ -94,7 +93,10 @@ namespace RednakoSharp
 
                     if (line == null) continue;
 
+                    /// Lavalink has a better message to indicate it's up but this works
+                    /// Because for some reason stdout doesnt include the message (maybe stderr? but I cant hook into it)
                     if(line.Contains("Undertow started on port")) {
+                        Console.WriteLine("Started local version of lavalink");
                         break;
                     }
                     Thread.Sleep(100);
