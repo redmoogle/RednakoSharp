@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Victoria;
+using Victoria.Player;
 
 namespace RednakoSharp.Helpers
 {
@@ -25,7 +26,7 @@ namespace RednakoSharp.Helpers
                 durationFormatted = track.Duration.ToString("hh\\:mm\\:ss");
                 positionFormatted = track.Position.ToString("hh\\:mm\\:ss");
             }
-            else if (duration.TotalMinutes >= 1 || duration.TotalSeconds >= 1)
+            else
             {
                 durationFormatted = track.Duration.ToString("mm\\:ss");
                 positionFormatted = track.Position.ToString("mm\\:ss");

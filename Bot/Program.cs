@@ -4,11 +4,12 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RednakoSharp.Helpers;
-using System;
 using System.Diagnostics;
 using System.Reflection;
 using Victoria;
-using Victoria.EventArgs;
+using Victoria.Node;
+using Victoria.Node.EventArgs;
+using Victoria.Player;
 
 #pragma warning disable CS1998 // No sync operation
 
@@ -32,6 +33,7 @@ namespace RednakoSharp
         /// Services modules can pull from
         /// </summary>
         private readonly IServiceProvider _services;
+        private readonly IServiceCollection _collection;
 
         /// <summary>
         /// Represents running lavalink process
@@ -103,31 +105,30 @@ namespace RednakoSharp
                 }
             }
 
-            _services = new ServiceCollection()
+            _collection = new ServiceCollection()
+                .AddLogging()
                 .AddSingleton(_configuration)
                 .AddSingleton(_socketConfig)
                 .AddSingleton<DiscordSocketClient>()
                 .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
                 .AddSingleton<InteractionHandler>()
                 .AddSingleton<LavaNode>()
-                .AddSingleton<LavaConfig>()
+                .AddSingleton<NodeConfiguration>()
                 .AddLavaNode(x =>
                 {
                     x.SelfDeaf = true;
                     x.Hostname = _lavacfg.GetValue<string>("lavalink:address");
                     x.Port = _lavacfg.GetValue<ushort>("lavalink:port");
                     x.Authorization = _lavacfg.GetValue<string>("lavalink:password");
-                    x.LogSeverity = LogSeverity.Error;
-                })
-                .BuildServiceProvider();
+                });
+            _services = _collection.BuildServiceProvider();
 
         }
 
         static void Main()
         {
-            new Program().RunAsync()
-                .GetAwaiter()
-                .GetResult();
+            Task Program = new Program().RunAsync();
+            Program.GetAwaiter().GetResult();
         }
 
         public void LavalinkClose(object? sender, EventArgs e)
@@ -137,8 +138,7 @@ namespace RednakoSharp
 
         public async Task RunAsync()
         {
-            var client = _services.GetRequiredService<DiscordSocketClient>();
-
+            DiscordSocketClient client = _services.GetRequiredService<DiscordSocketClient>();
             client.Log += LogAsync;
             client.Ready += OnReadyAsync;
 
@@ -158,19 +158,18 @@ namespace RednakoSharp
         {
             Console.WriteLine("Connection Ready");
             LavaNode node = _services.GetRequiredService<LavaNode>();
-            node.OnLog += LogAsync;
             if (!node.IsConnected)
             {
                 node.ConnectAsync();
-                node.OnTrackStarted += TrackStart;
+                node.OnTrackStart += TrackStart;
             }
         }
 
-        public static async Task TrackStart(TrackStartEventArgs trackargs) // I cant just put this directly into the music module due to the constructor being ran twice(wtf??)
+        public static async Task TrackStart(TrackStartEventArg<LavaPlayer<LavaTrack>, LavaTrack> eventArg) // I cant just put this directly into the music module due to the constructor being ran twice(wtf??)
         {
-            LavaTrack track = trackargs.Track;
+            LavaTrack track = eventArg.Track;
             Embed embed = await Embeds.TrackEmbed(track);
-            trackargs.Player.TextChannel.SendMessageAsync(embed: embed);
+            eventArg.Player.TextChannel.SendMessageAsync(embed: embed);
         }
 
         private async Task LogAsync(LogMessage message)

@@ -2,8 +2,10 @@
 using Discord.Interactions;
 using RednakoSharp.Helpers;
 using Victoria;
-using Victoria.Enums;
-using Victoria.Filters;
+using Victoria.Node;
+using Victoria.Player;
+using Victoria.Player.Filters;
+using Victoria.Resolvers;
 using Victoria.Responses.Search;
 
 namespace RednakoSharp.Modules
@@ -31,12 +33,13 @@ namespace RednakoSharp.Modules
                 return;
             }
 
-            if (!_lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer tryplayer))
+            if (!_lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer<LavaTrack> tryplayer))
             {
                 await _lavaNode.JoinAsync(uservc, Context.Channel as ITextChannel);
             }
 
-            LavaPlayer player = tryplayer ?? _lavaNode.GetPlayer(Context.Guild);
+            _lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer<LavaTrack> attempt);
+            LavaPlayer<LavaTrack> player = tryplayer ?? attempt;
             IVoiceChannel playervc = player.VoiceChannel;
 
             if (playervc != null && playervc != uservc)
@@ -56,28 +59,25 @@ namespace RednakoSharp.Modules
 
             if (searchResponse.Status == SearchStatus.PlaylistLoaded)
             {
-                player.Queue.Enqueue(searchResponse.Tracks);
+                foreach(LavaTrack track in searchResponse.Tracks)
+                {
+                    await player.PlayAsync(x =>
+                    {
+                        x.Track = track;
+                        x.ShouldPause = false;
+                    });
+                };
                 await RespondAsync($"Enqueued {searchResponse.Tracks.Count} songs.");
             }
             else
             {
-                LavaTrack track = searchResponse.Tracks.First();
-                player.Queue.Enqueue(track);
-                await RespondAsync($"Enqueued {track?.Title}");
+                await player.PlayAsync(x =>
+                {
+                    x.Track = searchResponse.Tracks.First();
+                    x.ShouldPause = false;
+                });
+                await RespondAsync($"Enqueued {searchResponse.Tracks.First().Title}");
             }
-
-            if (player.PlayerState is PlayerState.Playing or PlayerState.Paused)
-            {
-                return;
-            }
-
-            player.Queue.TryDequeue(out var lavaTrack);
-            await player.PlayAsync(x =>
-            {
-                x.Track = lavaTrack;
-                x.ShouldPause = false;
-                x.StartTime = TimeSpan.FromMilliseconds(10);
-            });
         }
 
         [EnabledInDm(false)]
@@ -151,14 +151,13 @@ namespace RednakoSharp.Modules
             double percentageAdj = (percentage - 100) / 400; // Converts to a -0.25 to 1.0 range
             if(percentageAdj == 0.0)
             {
-                Console.WriteLine("AAAAAAAAAAAAAA");
                 EqualizerBand[] arr =
                 {
-                    new EqualizerBand(0, 0.01),
-                    new EqualizerBand(1, 0.01),
-                    new EqualizerBand(2, 0.01),
-                    new EqualizerBand(3, 0.01),
-                    new EqualizerBand(4, 0.01)
+                    new EqualizerBand(0, 0),
+                    new EqualizerBand(1, 0),
+                    new EqualizerBand(2, 0),
+                    new EqualizerBand(3, 0),
+                    new EqualizerBand(4, 0)
                 };
                 player.EqualizerAsync(arr);
             }
@@ -191,11 +190,11 @@ namespace RednakoSharp.Modules
             {
                 EqualizerBand[] arr =
                 {
-                    new EqualizerBand(5, 0.01),
-                    new EqualizerBand(6, 0.01),
-                    new EqualizerBand(7, 0.01),
-                    new EqualizerBand(8, 0.01),
-                    new EqualizerBand(9, 0.01)
+                    new EqualizerBand(5, 0),
+                    new EqualizerBand(6, 0),
+                    new EqualizerBand(7, 0),
+                    new EqualizerBand(8, 0),
+                    new EqualizerBand(9, 0)
                 };
                 player.EqualizerAsync(arr);
             }
@@ -228,11 +227,11 @@ namespace RednakoSharp.Modules
             {
                 EqualizerBand[] arr =
                 {
-                    new EqualizerBand(10, 0.01),
-                    new EqualizerBand(11, 0.01),
-                    new EqualizerBand(12, 0.01),
-                    new EqualizerBand(13, 0.01),
-                    new EqualizerBand(14, 0.01)
+                    new EqualizerBand(10, 0),
+                    new EqualizerBand(11, 0),
+                    new EqualizerBand(12, 0),
+                    new EqualizerBand(13, 0),
+                    new EqualizerBand(14, 0)
                 };
                 player.EqualizerAsync(arr);
             }
