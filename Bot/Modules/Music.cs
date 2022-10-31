@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using RednakoSharp.Helpers;
+using System.ComponentModel;
 using Victoria;
 using Victoria.Node;
 using Victoria.Player;
@@ -27,9 +28,11 @@ namespace RednakoSharp.Modules
             IVoiceState? voiceState = Context.User as IVoiceState;
             IVoiceChannel? uservc = voiceState?.VoiceChannel;
 
+            await DeferAsync();
+
             if (voiceState == null || uservc == null)
             {
-                await RespondAsync("You are not connected to a voice channel", ephemeral: true);
+                await ModifyOriginalResponseAsync(props => { props.Content = "You are not connected to a voice channel"; });
                 return;
             }
 
@@ -44,7 +47,7 @@ namespace RednakoSharp.Modules
 
             if (playervc != null && playervc != uservc)
             {
-                await RespondAsync("I'm already connected to another voice channel.", ephemeral: true);
+                await ModifyOriginalResponseAsync(props => { props.Content = "I'm already connected to another voice channel."; });
                 return;
             }
 
@@ -53,31 +56,29 @@ namespace RednakoSharp.Modules
                     : await _lavaNode.SearchAsync(SearchType.YouTube, search);
             if (searchResponse.Status is SearchStatus.LoadFailed or SearchStatus.NoMatches)
             {
-                await RespondAsync($"I wasn't able to find anything for `{search}`.", ephemeral: true);
+                await ModifyOriginalResponseAsync(props => { props.Content = $"I wasn't able to find anything for `{search}`."; });
                 return;
             }
 
             if (searchResponse.Status == SearchStatus.PlaylistLoaded)
             {
-                foreach(LavaTrack track in searchResponse.Tracks)
-                {
-                    await player.PlayAsync(x =>
-                    {
-                        x.Track = track;
-                        x.ShouldPause = false;
-                    });
-                };
-                await RespondAsync($"Enqueued {searchResponse.Tracks.Count} songs.");
+                player.Vueue.Enqueue(searchResponse.Tracks);
+                await ModifyOriginalResponseAsync(props => { props.Content = $"Enqueued {searchResponse.Tracks.Count} songs."; });
             }
             else
             {
-                await player.PlayAsync(x =>
-                {
-                    x.Track = searchResponse.Tracks.First();
-                    x.ShouldPause = false;
-                });
-                await RespondAsync($"Enqueued {searchResponse.Tracks.First().Title}");
+                LavaTrack track = searchResponse.Tracks.First();
+                player.Vueue.Enqueue(track);
+                await ModifyOriginalResponseAsync(props => { props.Content = $"Enqueued {track.Title}"; });
             }
+
+            if (player.PlayerState is PlayerState.Playing or PlayerState.Paused)
+            {
+                return;
+            }
+
+            player.Vueue.TryDequeue(out var lavaTrack);
+            await player.PlayAsync(lavaTrack);
         }
 
         [EnabledInDm(false)]
