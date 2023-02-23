@@ -2,7 +2,7 @@
 
 namespace RednakoSharp.Helpers
 {
-    internal sealed class Http
+    public static class HttpHelper
     {
         /// <summary>
         ///  HttpClient for API requests
@@ -14,11 +14,16 @@ namespace RednakoSharp.Helpers
         /// </summary>
         /// <param name="url">HTTP URL</param>
         /// <returns>JObject</returns>
-        public static async Task<JObject> HttpAPIRequest(string url)
+        public static async Task<JObject> HttpApiRequest(string url)
+        {
+            HttpResponseMessage response = await Client.GetAsync(new Uri(url));
+            return JObject.Parse(await response.Content.ReadAsStringAsync());
+        }
+
+        public static async Task<JObject> HttpApiRequest(Uri url)
         {
             HttpResponseMessage response = await Client.GetAsync(url);
-            JObject json = JObject.Parse(await response.Content.ReadAsStringAsync());
-            return json;
+            return JObject.Parse(await response.Content.ReadAsStringAsync());
         }
     }
 }

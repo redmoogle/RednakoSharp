@@ -2,9 +2,9 @@
 
 namespace RednakoSharp.Helpers
 {
-    public sealed class SelectorComponents
+    public static class SelectorComponents
     {
-        public static MessageComponent AnimalMenu(string menuid)
+        public static MessageComponent AnimalMenu(string menuId)
         {
             ComponentBuilder builder = new();
             SelectMenuBuilder selector = new();
@@ -22,7 +22,7 @@ namespace RednakoSharp.Helpers
             selector.AddOption("Racoon", "racoon", "Trash Panda", emote: new Emoji("\U0001F99D"));
             selector.AddOption("Kangaroo", "kangaroo", "Oi you fuckin cunt", emote: new Emoji("\U0001F998"));
 
-            selector.WithCustomId(menuid);
+            selector.WithCustomId(menuId);
 
             builder.WithSelectMenu(selector);
             return builder.Build();

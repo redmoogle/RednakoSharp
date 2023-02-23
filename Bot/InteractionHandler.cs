@@ -36,7 +36,7 @@ namespace RednakoSharp
 
         public string GetValueAsString(string value)
         {
-            return _configuration.GetValue<string>("discord:" + value);
+            return _configuration.GetValue<string>("discord:" + value) ?? "";
         }
 
         public ulong GetValueAsUlong(string value)
@@ -45,7 +45,7 @@ namespace RednakoSharp
         }
 
         #pragma warning disable CS1998 // This is pure async no sync here
-        private async Task LogAsync(LogMessage log)
+        private static async Task LogAsync(LogMessage log)
             => Console.WriteLine(log);
 
         private async Task ReadyAsync()
@@ -53,9 +53,9 @@ namespace RednakoSharp
             // Context & Slash commands can be automatically registered, but this process needs to happen after the client enters the READY state.
             // Since Global Commands take around 1 hour to register, we should use a test guild to instantly update and test our commands.
             #if DEBUG
-            await _handler.RegisterCommandsToGuildAsync(_configuration.GetValue<ulong>("discord:testGuild"), true);
+            await _handler.RegisterCommandsToGuildAsync(_configuration.GetValue<ulong>("discord:testGuild"));
             #else
-            await _handler.RegisterCommandsGloballyAsync(true);
+            await _handler.RegisterCommandsGloballyAsync();
             #endif
         }
 
@@ -75,7 +75,17 @@ namespace RednakoSharp
                         case InteractionCommandError.UnmetPrecondition:
                             // implement
                             break;
-                        default:
+                        case InteractionCommandError.UnknownCommand:
+                            break;
+                        case InteractionCommandError.ConvertFailed:
+                            break;
+                        case InteractionCommandError.BadArgs:
+                            break;
+                        case InteractionCommandError.Exception:
+                            break;
+                        case InteractionCommandError.Unsuccessful:
+                            break;
+                        case InteractionCommandError.ParseFailed:
                             break;
                     }
             }
@@ -84,7 +94,7 @@ namespace RednakoSharp
                 // If Slash Command execution fails it is most likely that the original interaction acknowledgement will persist. It is a good idea to delete the original
                 // response, or at least let the user know that something went wrong during the command execution.
                 if (interaction.Type is InteractionType.ApplicationCommand)
-                    await interaction.GetOriginalResponseAsync().ContinueWith(async (msg) => await msg.Result.DeleteAsync());
+                    await interaction.GetOriginalResponseAsync().Result.DeleteAsync();
             }
         }
     }

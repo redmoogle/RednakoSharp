@@ -11,8 +11,8 @@ namespace RednakoSharp.Modules
         public InteractionService? Commands { get; set; }
         private readonly InteractionHandler _handler;
 
-        private readonly Random random = new();
-        private readonly string[] animals = { "cat", "dog", "koala", "fox", "bird", "red_panda", "panda", "racoon", "kangaroo" };
+        private readonly Random _random = new();
+        private readonly string[] _animals = { "cat", "dog", "koala", "fox", "bird", "red_panda", "panda", "racoon", "kangaroo" };
 
         // Constructor injection is also a valid way to access the dependencies
         public User(InteractionHandler handler)
@@ -75,26 +75,26 @@ namespace RednakoSharp.Modules
         }
 
         [ComponentInteraction("fact")]
-        public async Task AnimalFactInteractTask(string[] selectedAnimal)
+        internal async Task AnimalFactInteractTask(string[] selectedAnimal)
         {
             string animal = selectedAnimal[0];
 
             if (animal == "random")
             {
-                animal = animals[random.Next(0, animals.Length)];
+                animal = _animals[_random.Next(0, _animals.Length)];
             }
 
             await DeferAsync();
 
-            JObject json = await Http.HttpAPIRequest("https://some-random-api.ml/facts/" + animal);
+            JObject json = await HttpHelper.HttpApiRequest("https://some-random-api.ml/facts/" + animal);
 
             EmbedBuilder embed = new()
             {
-                Title = char.ToUpper(animal[0]) + animal[1..] + " Fact",
+                Title = General.Proper(animal) + " Fact",
                 Description = (string?)json["fact"]
             };
 
-            await ModifyOriginalResponseAsync(props => { props.Components = new ComponentBuilder().Build(); props.Embeds = new Embed[] { embed.Build() }; });
+            await ModifyOriginalResponseAsync(props => { props.Components = new ComponentBuilder().Build(); props.Embeds = new[] { embed.Build() }; });
         }
 
         [SlashCommand("animalimage", "Get some facts about animals")]
@@ -104,24 +104,24 @@ namespace RednakoSharp.Modules
         }
 
         [ComponentInteraction("image")]
-        public async Task AnimalImageInteractTask(string[] selectedAnimal)
+        internal async Task AnimalImageInteractTask(string[] selectedAnimal)
         {
             string animal = selectedAnimal[0];
 
             if (animal == "random")
             {
-                animal = animals[random.Next(0, animals.Length)];
+                animal = _animals[_random.Next(0, _animals.Length)];
             }
 
-            await DeferAsync();
-            JObject json = await Http.HttpAPIRequest("https://some-random-api.ml/img/" + animal);
+            await DeferAsync().ConfigureAwait(false);
+            JObject json = await HttpHelper.HttpApiRequest("https://some-random-api.ml/img/" + animal).ConfigureAwait(false);
             EmbedBuilder embed = new()
             {
-                Title = char.ToUpper(animal[0]) + animal[1..] + " Image",
+                Title = General.Proper(animal) + " Image",
                 ImageUrl = (string?)json["link"]
             };
 
-            await ModifyOriginalResponseAsync(props => { props.Components = new ComponentBuilder().Build(); props.Embeds = new Embed[] { embed.Build() }; });
+            await ModifyOriginalResponseAsync(props => { props.Components = new ComponentBuilder().Build(); props.Embeds = new[] { embed.Build() }; });
         }
     }
 }

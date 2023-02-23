@@ -3,6 +3,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RednakoSharp.Helpers;
 using System.Diagnostics;
 using System.Reflection;
@@ -15,35 +16,25 @@ using Victoria.Player;
 
 namespace RednakoSharp
 {
-    internal sealed class Program
+    internal sealed class Program : IDisposable
     {
         /// <summary>
         /// Discord Configuration
         /// </summary>
         private readonly IConfiguration _configuration;
-        /// <summary>
-        /// Enabled Services Configuration
-        /// </summary>
-        private readonly IConfiguration _localservices;
-        /// <summary>
-        /// Lavalink Configuration
-        /// </summary>
-        private readonly IConfiguration _lavacfg;
+
         /// <summary>
         /// Services modules can pull from
         /// </summary>
         private readonly IServiceProvider _services;
-        private readonly IServiceCollection _collection;
 
         /// <summary>
         /// Represents running lavalink process
         /// </summary>
-        private readonly Process? lavaprocess;
+        private readonly Process? _lavaprocess;
 
-        /// <summary>
-        /// Path to executing file
-        /// </summary>
-        private readonly string path;
+        private readonly CancellationTokenSource _delaySource = new();
+        private readonly CancellationToken _delayToken;
 
         private readonly DiscordSocketConfig _socketConfig = new()
         {
@@ -52,52 +43,54 @@ namespace RednakoSharp
             AlwaysDownloadUsers = true,
         };
 
-        public Program()
+        private Program()
         {
-            /// As far as my C# understanding goes GetDirectoryName can return null but this code *should* never
-            /// return null or something has gone terribly wrong.
-            path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+            _delayToken = _delaySource.Token;
+            // As far as my C# understanding goes GetDirectoryName can return null but this code *should* never
+            // return null or something has gone terribly wrong.
+            string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
 
-            /// Local Services Configuration
-            _localservices = new ConfigurationBuilder()
+            // Local Services Configuration
+            IConfiguration localservices = new ConfigurationBuilder()
                 .AddEnvironmentVariables(prefix: "services")
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            /// Discord.Net Configuration
+            // Discord.Net Configuration
             _configuration = new ConfigurationBuilder()
                 .AddEnvironmentVariables(prefix: "discord")
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            /// Lavalink/Victoria Configuration
-            _lavacfg = new ConfigurationBuilder()
-                .AddEnvironmentVariables(prefix: "discord")
+            // Lavalink/Victoria Configuration
+            IConfiguration lavaconfiguration = new ConfigurationBuilder()
+                .AddEnvironmentVariables(prefix: "lavalink")
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            if (_localservices.GetValue<bool>("services:useLocalLavalink"))
+            if (localservices.GetValue<bool>("services:useLocalLavalink"))
             {
-                lavaprocess = new Process();
-                lavaprocess.StartInfo.FileName = "java";
-                lavaprocess.StartInfo.Arguments = "-jar " + path + "/lavalink.jar";
-                lavaprocess.StartInfo.RedirectStandardOutput = true;
-                lavaprocess.StartInfo.UseShellExecute = false;
-                lavaprocess.Start();
+                _lavaprocess = new Process();
+                _lavaprocess.StartInfo.FileName = "java";
+                _lavaprocess.StartInfo.Arguments = "-jar " + path + "/lavalink.jar";
+                _lavaprocess.StartInfo.RedirectStandardOutput = true;
+                _lavaprocess.StartInfo.UseShellExecute = false;
+                _lavaprocess.Start();
 
-                AppDomain.CurrentDomain.ProcessExit += new EventHandler(LavalinkClose);
+                AppDomain.CurrentDomain.ProcessExit += LavalinkClose;
+
 
                 Console.WriteLine("Starting local version of lavalink");
-                StreamReader stdout = lavaprocess.StandardOutput;
+                StreamReader stdout = _lavaprocess.StandardOutput;
                 while (true)
                 {
                     string? line = stdout.ReadLine();
 
                     if (line == null) continue;
 
-                    /// Lavalink has a better message to indicate it's up but this works
-                    /// Because for some reason stdout doesnt include the message (maybe stderr? but I cant hook into it)
-                    if(line.Contains("Undertow started on port")) {
+                    // Lavalink has a better message to indicate it's up but this works
+                    // Because for some reason stdout doesnt include the message (maybe stderr? but I cant hook into it)
+                    if(line.Contains("Undertow started on port", StringComparison.InvariantCulture)) {
                         Console.WriteLine("Started local version of lavalink");
                         break;
                     }
@@ -105,7 +98,7 @@ namespace RednakoSharp
                 }
             }
 
-            _collection = new ServiceCollection()
+            IServiceCollection collection = new ServiceCollection()
                 .AddLogging()
                 .AddSingleton(_configuration)
                 .AddSingleton(_socketConfig)
@@ -117,26 +110,32 @@ namespace RednakoSharp
                 .AddLavaNode(x =>
                 {
                     x.SelfDeaf = true;
-                    x.Hostname = _lavacfg.GetValue<string>("lavalink:address");
-                    x.Port = _lavacfg.GetValue<ushort>("lavalink:port");
-                    x.Authorization = _lavacfg.GetValue<string>("lavalink:password");
+                    x.Hostname = lavaconfiguration.GetValue<string>("lavalink:address");
+                    x.Port = lavaconfiguration.GetValue<ushort>("lavalink:port");
+                    x.Authorization = lavaconfiguration.GetValue<string>("lavalink:password");
                 });
-            _services = _collection.BuildServiceProvider();
+            _services = collection.BuildServiceProvider();
 
         }
 
         static void Main()
         {
-            Task Program = new Program().RunAsync();
-            Program.GetAwaiter().GetResult();
+            var bot = new Program();
+            
+            
+            Task program = bot.RunAsync();
+            program.GetAwaiter().GetResult();
+            
+            bot.Dispose();
         }
 
-        public void LavalinkClose(object? sender, EventArgs e)
+        private void LavalinkClose(object? sender, EventArgs e)
         {
-            lavaprocess?.Close();
+            Dispose();
+            _lavaprocess?.Close();
         }
 
-        public async Task RunAsync()
+        private async Task RunAsync()
         {
             DiscordSocketClient client = _services.GetRequiredService<DiscordSocketClient>();
             client.Log += LogAsync;
@@ -147,14 +146,15 @@ namespace RednakoSharp
                 .InitializeAsync();
 
             // Bot token can be provided from the Configuration object we set up earlier
-            await client.LoginAsync(TokenType.Bot, _configuration.GetValue<string>("discord:token"));
+            var token = _configuration.GetValue<string>("discord:token");
+            await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
 
             // Never quit the program until manually forced to.
-            await Task.Delay(Timeout.Infinite);
+            await Task.Delay(Timeout.Infinite, _delayToken);
         }
 
-        public async Task OnReadyAsync()
+        private async Task OnReadyAsync()
         {
             Console.WriteLine("Connection Ready");
             LavaNode node = _services.GetRequiredService<LavaNode>();
@@ -165,14 +165,27 @@ namespace RednakoSharp
             }
         }
 
-        public static async Task TrackStart(TrackStartEventArg<LavaPlayer<LavaTrack>, LavaTrack> eventArg) // I cant just put this directly into the music module due to the constructor being ran twice(wtf??)
+        private static async Task TrackStart(TrackStartEventArg<LavaPlayer<LavaTrack>, LavaTrack> eventArg) // I cant just put this directly into the music module due to the constructor being ran twice(wtf??)
         {
             LavaTrack track = eventArg.Track;
             Embed embed = await Embeds.TrackEmbed(track);
             eventArg.Player.TextChannel.SendMessageAsync(embed: embed);
         }
 
-        private async Task LogAsync(LogMessage message)
+        private static async Task LogAsync(LogMessage message)
             => Console.WriteLine(message);
+
+        public void Dispose()
+        {
+            if(_lavaprocess != null)
+            {
+                _lavaprocess.Close();
+                _lavaprocess.Dispose();
+            }
+            DiscordSocketClient client = _services.GetRequiredService<DiscordSocketClient>();
+            client.StopAsync().GetAwaiter().GetResult();
+            _delaySource.Dispose();
+            Environment.Exit(0);
+        }
     }
 }

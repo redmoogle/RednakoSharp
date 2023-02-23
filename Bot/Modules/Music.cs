@@ -1,12 +1,10 @@
 ﻿using Discord;
 using Discord.Interactions;
 using RednakoSharp.Helpers;
-using System.ComponentModel;
-using Victoria;
+using System.Globalization;
 using Victoria.Node;
 using Victoria.Player;
 using Victoria.Player.Filters;
-using Victoria.Resolvers;
 using Victoria.Responses.Search;
 
 namespace RednakoSharp.Modules
@@ -26,26 +24,24 @@ namespace RednakoSharp.Modules
         public async Task PlayTask([Summary(description: "URL or search term")] string search)
         {
             IVoiceState? voiceState = Context.User as IVoiceState;
-            IVoiceChannel? uservc = voiceState?.VoiceChannel;
+            IVoiceChannel? voiceChannel = voiceState?.VoiceChannel;
 
             await DeferAsync();
 
-            if (voiceState == null || uservc == null)
+            if (voiceState == null || voiceChannel == null)
             {
                 await ModifyOriginalResponseAsync(props => { props.Content = "You are not connected to a voice channel"; });
                 return;
             }
 
-            if (!_lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer<LavaTrack> tryplayer))
+            if (!_lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer<LavaTrack> player))
             {
-                await _lavaNode.JoinAsync(uservc, Context.Channel as ITextChannel);
+                await _lavaNode.JoinAsync(voiceChannel, Context.Channel as ITextChannel); 
+                _lavaNode.TryGetPlayer(Context.Guild, out player);
             }
+            IVoiceChannel? playerVoiceChannel = player.VoiceChannel;
 
-            _lavaNode.TryGetPlayer(Context.Guild, out LavaPlayer<LavaTrack> attempt);
-            LavaPlayer<LavaTrack> player = tryplayer ?? attempt;
-            IVoiceChannel playervc = player.VoiceChannel;
-
-            if (playervc != null && playervc != uservc)
+            if (playerVoiceChannel != null && playerVoiceChannel != voiceChannel)
             {
                 await ModifyOriginalResponseAsync(props => { props.Content = "I'm already connected to another voice channel."; });
                 return;
@@ -62,12 +58,19 @@ namespace RednakoSharp.Modules
 
             if (searchResponse.Status == SearchStatus.PlaylistLoaded)
             {
-                player.Vueue.Enqueue(searchResponse.Tracks);
+                foreach(LavaTrack track in searchResponse.Tracks)
+                {
+                    //ExtendedTrack extendedTrack = new(track, Context.User);
+                    //player.Vueue.Enqueue(extendedTrack);
+                    player.Vueue.Enqueue(track);
+                }
                 await ModifyOriginalResponseAsync(props => { props.Content = $"Enqueued {searchResponse.Tracks.Count} songs."; });
             }
             else
             {
                 LavaTrack track = searchResponse.Tracks.First();
+                //ExtendedTrack extendedTrack = new(track, Context.User);
+                //player.Vueue.Enqueue(extendedTrack);
                 player.Vueue.Enqueue(track);
                 await ModifyOriginalResponseAsync(props => { props.Content = $"Enqueued {track.Title}"; });
             }
@@ -107,15 +110,22 @@ namespace RednakoSharp.Modules
                 return;
             }
 
-            if(player.Track != null)
+            //ExtendedTrack track = (ExtendedTrack)player.Track;
+
+            RespondAsync(embed: await Embeds.TrackEmbed(player.Track));
+        }
+
+        [EnabledInDm(false)]
+        [SlashCommand("queue", "List the queue")]
+        public async Task QueueTask()
+        {
+            if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
             {
-                RespondAsync(embed: await Embeds.TrackEmbed(player.Track));
-            }
-            else
-            {
-                await RespondAsync("Nothing is playing.", ephemeral: true);
+                await RespondAsync("I'm not connected to a voice channel.", ephemeral: true);
                 return;
             }
+
+            PageComponent _ = new(player.Vueue, Context);
         }
 
         [EnabledInDm(false)]
@@ -136,7 +146,6 @@ namespace RednakoSharp.Modules
             else
             {
                 await RespondAsync("Nothing is playing.", ephemeral: true);
-                return;
             }
         }
 
@@ -174,11 +183,11 @@ namespace RednakoSharp.Modules
                 };
                 player.EqualizerAsync(arr);
             }
-            await RespondAsync("Set Bass Gain to " + percentage.ToString() + "%");
+            await RespondAsync("Set Bass Gain to " + percentage.ToString(CultureInfo.InvariantCulture) + "%");
         }
 
         [EnabledInDm(false)]
-        [SlashCommand("mids", "Adjust the mid in %")]
+        [SlashCommand("mid", "Adjust the mid in %")]
         public async Task MidTask([MinValue(0)][MaxValue(500)] double percentage = 0)
         {
             if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
@@ -211,7 +220,7 @@ namespace RednakoSharp.Modules
                 };
                 player.EqualizerAsync(arr);
             }
-            await RespondAsync("Set Mid Gain to " + percentage.ToString() + "%");
+            await RespondAsync("Set Mid Gain to " + percentage.ToString(CultureInfo.InvariantCulture) + "%");
         }
 
         [EnabledInDm(false)]
@@ -248,7 +257,7 @@ namespace RednakoSharp.Modules
                 };
                 player.EqualizerAsync(arr);
             }
-            await RespondAsync("Set Treble Gain to " + percentage.ToString() + "%");
+            await RespondAsync("Set Treble Gain to " + percentage.ToString(CultureInfo.InvariantCulture) + "%");
         }
     }
 }

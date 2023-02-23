@@ -1,14 +1,8 @@
-﻿using Discord.Interactions;
-using Discord.WebSocket;
+﻿using System.Globalization;
+using Discord.Interactions;
 using Discord;
 using Newtonsoft.Json.Linq;
 using RednakoSharp.Helpers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
 
 namespace RednakoSharp.Modules
 {
@@ -22,15 +16,15 @@ namespace RednakoSharp.Modules
         {
             if(maximum < minimum)
             {
-                await RespondAsync("Maximum is larger than the minmum.", ephemeral: true);
+                await RespondAsync("Maximum is larger than the minimum.", ephemeral: true);
                 return;
             }
 
             // Scroll through 20 numbers
-            await RespondAsync(_random.NextInt64(minimum, maximum).ToString());
+            await RespondAsync(_random.NextInt64(minimum, maximum).ToString(CultureInfo.InvariantCulture));
             for(var i = 0; i < 5; i++)
             {
-                await ModifyOriginalResponseAsync(props => { props.Content = _random.NextInt64(minimum, maximum).ToString(); });
+                await ModifyOriginalResponseAsync(props => { props.Content = _random.NextInt64(minimum, maximum).ToString(CultureInfo.InvariantCulture); });
                 Thread.Sleep(100);
             }
         }
@@ -38,7 +32,7 @@ namespace RednakoSharp.Modules
         [SlashCommand("meme", "Pulls up a bad meme.")]
         public async Task BadMeme()
         {
-            JObject obj = await Http.HttpAPIRequest("https://some-random-api.ml/meme");
+            JObject obj = await HttpHelper.HttpApiRequest(new Uri("https://some-random-api.ml/meme"));
 
             Embed embed = new EmbedBuilder()
                 .WithDescription((string?)obj["caption"])
@@ -53,7 +47,7 @@ namespace RednakoSharp.Modules
         [SlashCommand("joke", "Parrots a bad joke.")]
         public async Task BadJoke()
         {
-            JObject obj = await Http.HttpAPIRequest("https://some-random-api.ml/joke");
+            JObject obj = await HttpHelper.HttpApiRequest(new Uri("https://some-random-api.ml/joke"));
 
             Embed embed = new EmbedBuilder()
                 .WithDescription((string?)obj["joke"])
