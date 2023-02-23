@@ -51,10 +51,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="7.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Victoria\src\Victoria.csproj" />
+    <PackageReference Include="Victoria" Version="6.0.23.210" />
   </ItemGroup>
 
 </Project>
