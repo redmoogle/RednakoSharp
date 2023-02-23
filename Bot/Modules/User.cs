@@ -86,7 +86,7 @@ namespace RednakoSharp.Modules
 
             await DeferAsync();
 
-            JObject json = await HttpHelper.HttpApiRequest("https://some-random-api.ml/facts/" + animal);
+            JObject json = await HttpHelper.HttpApiRequest(new Uri("https://some-random-api.ml/facts/" + animal));
 
             EmbedBuilder embed = new()
             {
@@ -114,7 +114,7 @@ namespace RednakoSharp.Modules
             }
 
             await DeferAsync().ConfigureAwait(false);
-            JObject json = await HttpHelper.HttpApiRequest("https://some-random-api.ml/img/" + animal).ConfigureAwait(false);
+            JObject json = await HttpHelper.HttpApiRequest(new Uri("https://some-random-api.ml/img/" + animal));
             EmbedBuilder embed = new()
             {
                 Title = General.Proper(animal) + " Image",

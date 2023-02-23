@@ -59,6 +59,7 @@ namespace RednakoSharp
             #endif
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Bot shouldn't die")]
         private async Task HandleInteraction(SocketInteraction interaction)
         {
             try
@@ -94,7 +95,10 @@ namespace RednakoSharp
                 // If Slash Command execution fails it is most likely that the original interaction acknowledgement will persist. It is a good idea to delete the original
                 // response, or at least let the user know that something went wrong during the command execution.
                 if (interaction.Type is InteractionType.ApplicationCommand)
-                    await interaction.GetOriginalResponseAsync().Result.DeleteAsync();
+                {
+                    var originalResponse = await interaction.GetOriginalResponseAsync();
+                    await originalResponse.DeleteAsync();
+                }
             }
         }
     }
