@@ -11,6 +11,7 @@
     <AnalysisLevel>6.0-all</AnalysisLevel>
     <RepositoryUrl>https://github.com/redmoogle/RednakoSharp</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <StartupObject>RednakoSharp.Program</StartupObject>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
