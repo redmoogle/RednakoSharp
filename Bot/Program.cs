@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RednakoSharp.Helpers;
 using System.Diagnostics;
+using System.Net;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using Victoria;
 using Victoria.Node;
@@ -73,7 +75,6 @@ namespace RednakoSharp
                 _lavaprocess = new Process();
                 _lavaprocess.StartInfo.FileName = "java";
                 _lavaprocess.StartInfo.Arguments = "-jar " + path + "/lavalink.jar";
-                _lavaprocess.StartInfo.RedirectStandardOutput = true;
                 _lavaprocess.StartInfo.UseShellExecute = false;
                 _lavaprocess.Start();
 
@@ -81,21 +82,18 @@ namespace RednakoSharp
 
 
                 Console.WriteLine("Starting local version of lavalink");
-                StreamReader stdout = _lavaprocess.StandardOutput;
                 while (true)
                 {
-                    string? line = stdout.ReadLine();
+                    IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
+                    IPEndPoint[] tcpEndPoints = properties.GetActiveTcpListeners();
 
-                    if (line == null) continue;
-
-                    // Lavalink has a better message to indicate it's up but this works
-                    // Because for some reason stdout doesnt include the message (maybe stderr? but I cant hook into it)
-                    if(line.Contains("Undertow started on port", StringComparison.InvariantCulture)) {
-                        Console.WriteLine("Started local version of lavalink");
+                    if(tcpEndPoints.Any(p => p.Port == lavaconfiguration.GetValue<ushort>("lavalink:port")))
+                    {
                         break;
                     }
                     Thread.Sleep(100);
                 }
+                Console.WriteLine("Started Lavalink");
             }
 
             IServiceCollection collection = new ServiceCollection()
@@ -109,7 +107,6 @@ namespace RednakoSharp
                 .AddSingleton<NodeConfiguration>()
                 .AddLavaNode(x =>
                 {
-                    x.SelfDeaf = true;
                     x.Hostname = lavaconfiguration.GetValue<string>("lavalink:address");
                     x.Port = lavaconfiguration.GetValue<ushort>("lavalink:port");
                     x.Authorization = lavaconfiguration.GetValue<string>("lavalink:password");

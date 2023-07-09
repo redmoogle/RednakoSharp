@@ -56,7 +56,7 @@ logging:
 
   level:
     root: INFO
-    lavalink: ERROR
+    lavalink: INFO
 
   logback:
     rollingpolicy:

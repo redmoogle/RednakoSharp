@@ -1,8 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using System.Globalization;
-
-#pragma warning disable CA1002 // Do not expose generic lists
+using System.Text;
 
 namespace RednakoSharp.Helpers
 {
@@ -19,7 +18,7 @@ namespace RednakoSharp.Helpers
         /// <summary>
         /// What page were on
         /// </summary>
-        public int CurrentPage { get; internal set; } = 1;
+        public int CurrentPage { get; internal set; }
         /// <summary>
         /// How many items per page
         /// </summary>
@@ -59,23 +58,38 @@ namespace RednakoSharp.Helpers
 
         internal Tuple<Embed, MessageComponent> GetPageComponent()
         {
-            IEnumerable<object> pageItems = Items.Take(new Range(CurrentPage*PerPage, PerPage));
+            IEnumerable<object> pageItems = Items.Take(new Range(CurrentPage*PerPage, CurrentPage*PerPage+PerPage));
 
             ComponentBuilder componentBuilder = new();
-            MessageComponent component = componentBuilder
-                .WithButton(emote: DecrementEmoji, customId: "decrease")
-                .WithButton(emote: IncrementEmoji, customId: "increase")
-                .Build();
+            MessageComponent component;
+
+            if(CurrentPage+1 != TotalPages())
+            {
+                componentBuilder.WithButton(emote: IncrementEmoji, customId: "increase");
+            }
+
+            if(CurrentPage != 0)
+            {
+                componentBuilder.WithButton(emote: DecrementEmoji, customId: "decrease");
+            }
+
+            component = componentBuilder.Build();
 
             EmbedBuilder embedBuilder = new();
+            StringBuilder stringBuilder = new();
 
-            int index = (CurrentPage - 1) * PerPage;
+            stringBuilder.AppendLine("```");
+
+            int index = 0;
             foreach (object item in pageItems)
             {
                 index++;
-                embedBuilder.AddField(index.ToString(CultureInfo.InvariantCulture) + ": ", item);
+                stringBuilder.AppendLine(index + ": " + item.ToString());
             }
-            embedBuilder.Footer = new EmbedFooterBuilder().WithText(index.ToString(CultureInfo.InvariantCulture) + "/" + TotalPages().ToString(CultureInfo.InvariantCulture));
+            stringBuilder.AppendLine("```");
+
+            embedBuilder.WithDescription(stringBuilder.ToString());
+            embedBuilder.Footer = new EmbedFooterBuilder().WithText((CurrentPage+1).ToString(CultureInfo.InvariantCulture) + "/" + TotalPages().ToString(CultureInfo.InvariantCulture));
             
             return new Tuple<Embed, MessageComponent>(embedBuilder.Build(), component);
 
@@ -108,20 +122,20 @@ namespace RednakoSharp.Helpers
         }
 
         [ComponentInteraction("decrease")]
-        internal void DecrementTask()
+        public void DecrementTask()
         {
             Tuple<Embed, MessageComponent> returnable = DecrementPage();
             _context.Interaction.ModifyOriginalResponseAsync(props => { props.Components = returnable.Item2; props.Embeds = new[] { returnable.Item1 }; }).GetAwaiter().GetResult();
         }
 
         [ComponentInteraction("increase")]
-        internal void IncrementTask()
+        public void IncrementTask()
         {
             Tuple<Embed, MessageComponent> returnable = IncrementPage();
             _context.Interaction.ModifyOriginalResponseAsync(props => { props.Components = returnable.Item2; props.Embeds = new[] { returnable.Item1 }; }).GetAwaiter().GetResult();
         }
 
+        public SocketInteractionContext Context => _context;
+
     }
 }
-
-#pragma warning restore CA1002 // Do not expose generic lists

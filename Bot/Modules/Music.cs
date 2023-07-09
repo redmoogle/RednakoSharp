@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using RednakoSharp.Helpers;
 using System.Globalization;
 using Victoria.Node;
@@ -13,10 +14,40 @@ namespace RednakoSharp.Modules
     {
         public InteractionService? Commands { get; set; }
         private readonly LavaNode _lavaNode;
+        private readonly DiscordSocketClient _client;
+        private readonly Dictionary<ulong, PageComponent> Pages = new();
         // Constructor injection is also a valid way to access the dependencies
-        public Music(LavaNode lavaNode)
+        public Music(LavaNode lavaNode, DiscordSocketClient client)
         {
             _lavaNode = lavaNode;
+            _client = client;
+
+            _client.ButtonExecuted += OnButtonInteraction;
+        }
+
+        private async Task OnButtonInteraction(SocketMessageComponent component)
+        {
+            if(component.GuildId == null)
+            {
+                return;
+            }
+            if (!Pages.TryGetValue((ulong)component.GuildId, out var PageComponent))
+            {
+                return;
+            }
+
+            Tuple<Embed, MessageComponent> message;
+            var originalResponse = await component.GetOriginalResponseAsync();
+            switch (component.Data.CustomId) {
+                case "decrease":
+                    message = PageComponent.DecrementPage();
+                    await component.UpdateAsync(props => { props.Components = message.Item2; props.Embeds = new[] { message.Item1 }; });
+                    break;
+                case "increase":
+                    message = PageComponent.IncrementPage();
+                    await component.UpdateAsync(props => { props.Components = message.Item2; props.Embeds = new[] { message.Item1 }; });
+                    break;
+            }
         }
 
         [EnabledInDm(false)]
@@ -26,7 +57,7 @@ namespace RednakoSharp.Modules
             IVoiceState? voiceState = Context.User as IVoiceState;
             IVoiceChannel? voiceChannel = voiceState?.VoiceChannel;
 
-            await DeferAsync();
+            await DeferAsync(true);
 
             if (voiceState == null || voiceChannel == null)
             {
@@ -60,18 +91,18 @@ namespace RednakoSharp.Modules
             {
                 foreach(LavaTrack track in searchResponse.Tracks)
                 {
-                    //ExtendedTrack extendedTrack = new(track, Context.User);
-                    //player.Vueue.Enqueue(extendedTrack);
-                    player.Vueue.Enqueue(track);
+                    ExtendedTrack extendedTrack = new(track, Context.User);
+                    player.Vueue.Enqueue(extendedTrack);
+                    //player.Vueue.Enqueue(track);
                 }
                 await ModifyOriginalResponseAsync(props => { props.Content = $"Enqueued {searchResponse.Tracks.Count} songs."; });
             }
             else
             {
                 LavaTrack track = searchResponse.Tracks.First();
-                //ExtendedTrack extendedTrack = new(track, Context.User);
-                //player.Vueue.Enqueue(extendedTrack);
-                player.Vueue.Enqueue(track);
+                ExtendedTrack extendedTrack = new(track, Context.User);
+                player.Vueue.Enqueue(extendedTrack);
+                //player.Vueue.Enqueue(track);
                 await ModifyOriginalResponseAsync(props => { props.Content = $"Enqueued {track.Title}"; });
             }
 
@@ -125,7 +156,14 @@ namespace RednakoSharp.Modules
                 return;
             }
 
-            PageComponent _ = new(player.Vueue, Context);
+            PageComponent page = new(player.Vueue, Context);
+            if(Pages.ContainsKey(Context.Guild.Id))
+            {
+                Pages[Context.Guild.Id] = page;
+            } else
+            {
+                Pages.Add(Context.Guild.Id, page);
+            }
         }
 
         [EnabledInDm(false)]
@@ -225,7 +263,7 @@ namespace RednakoSharp.Modules
 
         [EnabledInDm(false)]
         [SlashCommand("treble", "Adjust the treble in %")]
-        public async Task TrebleTask([MinValue(0)][MaxValue(500)] double percentage = 0)
+        public async Task TrebleTask([MinValue(0)][MaxValue(500)]double percentage = 0)
         {
             if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
             {
@@ -258,6 +296,19 @@ namespace RednakoSharp.Modules
                 player.EqualizerAsync(arr);
             }
             await RespondAsync("Set Treble Gain to " + percentage.ToString(CultureInfo.InvariantCulture) + "%");
+        }
+
+        [EnabledInDm(false)]
+        [SlashCommand("volume", "Adjust volume")]
+        public async Task VolumeTask([MinValue(0)][MaxValue(1000)] int percentage = 0)
+        {
+            if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
+            {
+                await RespondAsync("I'm not connected to a voice channel.", ephemeral: true);
+                return;
+            }
+            await player.SetVolumeAsync(percentage);
+            await RespondAsync("Set volume to " + percentage.ToString(CultureInfo.InvariantCulture) + "%");
         }
     }
 }
