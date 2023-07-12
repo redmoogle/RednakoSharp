@@ -62,7 +62,7 @@ namespace RednakoSharp
             {
                 _lavaprocess = new Process();
                 _lavaprocess.StartInfo.FileName = "java";
-                _lavaprocess.StartInfo.Arguments = "-jar " + path + "/Lavalink.jar";
+                _lavaprocess.StartInfo.Arguments = "-jar " + path + "/lavalink.jar";
                 _lavaprocess.StartInfo.UseShellExecute = false;
                 _lavaprocess.Start();
 
