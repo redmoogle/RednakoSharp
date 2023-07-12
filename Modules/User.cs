@@ -3,6 +3,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Newtonsoft.Json.Linq;
 using RednakoSharp.Helpers;
+using System.Globalization;
 
 namespace RednakoSharp.Modules
 {
@@ -35,10 +36,10 @@ namespace RednakoSharp.Modules
             EmbedBuilder embed = new EmbedBuilder()
                 .WithTitle("Bot Information")
                 .WithThumbnailUrl(client.CurrentUser.GetAvatarUrl() ?? client.CurrentUser.GetDefaultAvatarUrl())
-                .AddField("Owner", client.GetUser(_handler.GetValueAsUlong("owner")).ToString())
+                .AddField("Owner", client.GetUser((ulong)_handler.configuration.ownerId).Mention)
                 .AddField("Servers", client.Guilds.Count)
-                .AddField("Members", client.Guilds.Sum(guild => guild.MemberCount));
-
+                .AddField("Members", client.Guilds.Sum(guild => guild.MemberCount))
+                .AddField("Github ", _handler.configuration.repository);
             await RespondAsync(embed: embed.Build());
         }
 

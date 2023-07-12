@@ -19,14 +19,7 @@ namespace RednakoSharp.Modules
                 await RespondAsync("Maximum is larger than the minimum.", ephemeral: true);
                 return;
             }
-
-            // Scroll through 20 numbers
             await RespondAsync(_random.NextInt64(minimum, maximum).ToString(CultureInfo.InvariantCulture));
-            for(var i = 0; i < 5; i++)
-            {
-                await ModifyOriginalResponseAsync(props => { props.Content = _random.NextInt64(minimum, maximum).ToString(CultureInfo.InvariantCulture); });
-                Thread.Sleep(100);
-            }
         }
 
         [SlashCommand("meme", "Pulls up a bad meme.")]

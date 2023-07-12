@@ -3,7 +3,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using RednakoSharp.Helpers;
 using System.Diagnostics;
 using System.Net;
@@ -13,8 +12,8 @@ using Victoria;
 using Victoria.Node;
 using Victoria.Node.EventArgs;
 using Victoria.Player;
-
-#pragma warning disable CS1998 // No sync operation
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace RednakoSharp
 {
@@ -23,7 +22,7 @@ namespace RednakoSharp
         /// <summary>
         /// Discord Configuration
         /// </summary>
-        private readonly IConfiguration _configuration;
+        private readonly RednakoConfig configFile;
 
         /// <summary>
         /// Services modules can pull from
@@ -48,29 +47,18 @@ namespace RednakoSharp
         private Program()
         {
             _delayToken = _delaySource.Token;
+
+            var yamlDeserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .Build();
+
             // As far as my C# understanding goes GetDirectoryName can return null but this code *should* never
             // return null or something has gone terribly wrong.
             string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+            var fileHandle = File.ReadAllText(path+"/appsettings.yml");
+            configFile = yamlDeserializer.Deserialize<RednakoConfig>(fileHandle);
 
-            // Local Services Configuration
-            IConfiguration localservices = new ConfigurationBuilder()
-                .AddEnvironmentVariables(prefix: "services")
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            // Discord.Net Configuration
-            _configuration = new ConfigurationBuilder()
-                .AddEnvironmentVariables(prefix: "discord")
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            // Lavalink/Victoria Configuration
-            IConfiguration lavaconfiguration = new ConfigurationBuilder()
-                .AddEnvironmentVariables(prefix: "lavalink")
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            if (localservices.GetValue<bool>("services:useLocalLavalink"))
+            if (configFile.localLavalink)
             {
                 _lavaprocess = new Process();
                 _lavaprocess.StartInfo.FileName = "java";
@@ -87,7 +75,7 @@ namespace RednakoSharp
                     IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
                     IPEndPoint[] tcpEndPoints = properties.GetActiveTcpListeners();
 
-                    if(tcpEndPoints.Any(p => p.Port == lavaconfiguration.GetValue<ushort>("lavalink:port")))
+                    if(tcpEndPoints.Any(p => p.Port == configFile.lavaPort))
                     {
                         break;
                     }
@@ -98,7 +86,7 @@ namespace RednakoSharp
 
             IServiceCollection collection = new ServiceCollection()
                 .AddLogging()
-                .AddSingleton(_configuration)
+                .AddSingleton(configFile)
                 .AddSingleton(_socketConfig)
                 .AddSingleton<DiscordSocketClient>()
                 .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
@@ -107,9 +95,9 @@ namespace RednakoSharp
                 .AddSingleton<NodeConfiguration>()
                 .AddLavaNode(x =>
                 {
-                    x.Hostname = lavaconfiguration.GetValue<string>("lavalink:address");
-                    x.Port = lavaconfiguration.GetValue<ushort>("lavalink:port");
-                    x.Authorization = lavaconfiguration.GetValue<string>("lavalink:password");
+                    x.Hostname = configFile.lavaIp;
+                    x.Port = (ushort)configFile.lavaPort;
+                    x.Authorization = configFile.lavaPass;
                 });
             _services = collection.BuildServiceProvider();
 
@@ -143,7 +131,7 @@ namespace RednakoSharp
                 .InitializeAsync();
 
             // Bot token can be provided from the Configuration object we set up earlier
-            var token = _configuration.GetValue<string>("discord:token");
+            var token = configFile.discordToken;
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
 
@@ -157,7 +145,7 @@ namespace RednakoSharp
             LavaNode node = _services.GetRequiredService<LavaNode>();
             if (!node.IsConnected)
             {
-                node.ConnectAsync();
+                await node.ConnectAsync();
                 node.OnTrackStart += TrackStart;
             }
         }

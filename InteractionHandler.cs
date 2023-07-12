@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using RednakoSharp.Helpers;
 using System.Reflection;
 
 namespace RednakoSharp
@@ -10,15 +11,15 @@ namespace RednakoSharp
     {
         private readonly DiscordSocketClient _client;
         private readonly InteractionService _handler;
+        public readonly RednakoConfig configuration;
         private readonly IServiceProvider _services;
-        private readonly IConfiguration _configuration;
 
-        public InteractionHandler(DiscordSocketClient client, InteractionService handler, IServiceProvider services, IConfiguration config)
+        public InteractionHandler(DiscordSocketClient client, InteractionService handler, IServiceProvider services, RednakoConfig config)
         {
             _client = client;
             _handler = handler;
             _services = services;
-            _configuration = config;
+            configuration = config;
         }
 
         public async Task InitializeAsync()
@@ -32,16 +33,6 @@ namespace RednakoSharp
 
             // Process the InteractionCreated payloads to execute Interactions commands
             _client.InteractionCreated += HandleInteraction;
-        }
-
-        public string GetValueAsString(string value)
-        {
-            return _configuration.GetValue<string>("discord:" + value) ?? "";
-        }
-
-        public ulong GetValueAsUlong(string value)
-        {
-            return _configuration.GetValue<ulong>("discord:" + value);
         }
 
         #pragma warning disable CS1998 // This is pure async no sync here

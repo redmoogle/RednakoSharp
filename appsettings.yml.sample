@@ -1,0 +1,10 @@
+﻿discordToken: "Le Funny Bot Token"
+repository: "https://github.com/redmoogle/RednakoSharp"
+inviteLink: "https://discord.gg/2vUXuG7gKh"
+ownerId: 193500935182352395
+testGuildId: 671735916712165406
+
+localLavalink: true
+lavaPort: 2333
+lavaIp: "127.0.0.1"
+lavaPass: "youshallnotpass"

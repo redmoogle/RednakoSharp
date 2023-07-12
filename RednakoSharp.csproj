@@ -19,18 +19,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="application.yml" />
-    <None Remove="appsettings.json" />
     <None Remove="Lavalink.jar" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="application.yml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
     <EmbeddedResource Include="Lavalink.jar">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
@@ -53,6 +45,19 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="7.0.0" />
     <PackageReference Include="Victoria" Version="6.0.1026" />
+    <PackageReference Include="YamlDotNet" Version="13.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="application.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="application.yml.sample">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
